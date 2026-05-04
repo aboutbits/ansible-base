@@ -1,2 +1,3 @@
 ---
 base_timezone: 'Europe/Rome'
+base_auto_update: true
