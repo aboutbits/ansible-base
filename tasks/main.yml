@@ -12,6 +12,7 @@
   ansible.builtin.apt:
     name: unattended-upgrades
     state: present
+    update_cache: true
   when: base_auto_update
 
 - name: Enable unattended-upgrades
