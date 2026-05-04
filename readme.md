@@ -3,12 +3,9 @@ Ansible Base
 
 Base setup of a server.
 
-## Variables
+## Role Variables
 
-| Variable           | Description                       | Default       |
-|--------------------|-----------------------------------|---------------|
-| `base_timezone`    | Timezone to configure on the host | `Europe/Rome` |
-| `base_auto_update` | Enable automatic package updates  | `true`        |
+- `base_timezone`: Timezone to configure on the host
 
 ## Example Playbook
 
@@ -19,7 +16,6 @@ Base setup of a server.
         name: ansible-base
       vars:
         base_timezone: "Europe/Rome"
-        base_auto_update: true
 ```
 
 ## Build & Publish

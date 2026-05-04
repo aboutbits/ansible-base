@@ -13,7 +13,6 @@
     name: unattended-upgrades
     state: present
     update_cache: true
-  when: base_auto_update
 
 - name: Enable unattended-upgrades
   ansible.builtin.copy:
@@ -24,4 +23,3 @@
     owner: root
     group: root
     mode: '0644'
-  when: base_auto_update
