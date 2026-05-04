@@ -1,0 +1,9 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: {{ base_timezone } }
+
+- name: Restart service cron
+  ansible.builtin.systemd:
+    name: cron
+    state: restarted
