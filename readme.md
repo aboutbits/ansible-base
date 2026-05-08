@@ -6,6 +6,8 @@ Base setup of a server.
 ## Role Variables
 
 - `base_timezone`: Timezone to configure on the host
+- `base_unattended_reboot_time`: Time when unattended-upgrades should reboot if needed (default: `"05:00"`)
+- `base_unattended_add_k3s_drain_hook`: Whether to install a k3s drain pre-reboot hook (default: `false`)
 
 ## Example Playbook
 

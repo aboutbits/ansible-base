@@ -23,3 +23,58 @@
     owner: root
     group: root
     mode: '0644'
+
+- name: Create unattended-upgrades pre-reboot hooks directory
+  ansible.builtin.file:
+    path: /etc/unattended-upgrades/pre-reboot-hooks.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy unattended-upgrades pre-reboot hooks runner
+  ansible.builtin.copy:
+    dest: /usr/local/bin/unattended-pre-reboot-hooks.sh
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      hook_dir="/etc/unattended-upgrades/pre-reboot-hooks.d"
+      for hook in "${hook_dir}"/*; do
+        [ -f "$hook" ] || continue
+        [ -x "$hook" ] || continue
+        "$hook"
+      done
+
+- name: Deploy k3s pre-reboot drain hook
+  ansible.builtin.copy:
+    dest: /etc/unattended-upgrades/pre-reboot-hooks.d/10-k3s-drain
+    owner: root
+    group: root
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      k3s kubectl drain "$(hostname)" \
+        --ignore-daemonsets \
+        --delete-emptydir-data \
+        --timeout=120s
+  when: base_unattended_add_k3s_drain_hook
+
+- name: Remove k3s pre-reboot drain hook when disabled
+  ansible.builtin.file:
+    path: /etc/unattended-upgrades/pre-reboot-hooks.d/10-k3s-drain
+    state: absent
+  when: not base_unattended_add_k3s_drain_hook
+
+- name: Configure unattended-upgrades reboot behavior
+  ansible.builtin.blockinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    create: true
+    marker: "// {mark} ANSIBLE MANAGED REBOOT SETTINGS"
+    block: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
+      Unattended-Upgrade::Automatic-Reboot-Time "{{ base_unattended_reboot_time }}";
+      Unattended-Upgrade::Pre-Reboot-Hook "/usr/local/bin/unattended-pre-reboot-hooks.sh";

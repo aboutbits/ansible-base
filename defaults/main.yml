@@ -1,2 +1,4 @@
 ---
 base_timezone: 'Europe/Rome'
+base_unattended_reboot_time: '05:00'
+base_unattended_add_k3s_drain_hook: false
