@@ -3,6 +3,10 @@ Ansible Base
 
 Base setup of a server.
 
+## Role Variables
+
+- `base_timezone`: Timezone to configure on the host
+
 ## Example Playbook
 
 ```yaml
