@@ -40,12 +40,15 @@
     mode: '0755'
     content: |
       #!/bin/bash
-      set -euo pipefail
+      set -uo pipefail
+      shopt -s nullglob
       hook_dir="/etc/unattended-upgrades/pre-reboot-hooks.d"
       for hook in "${hook_dir}"/*; do
         [ -f "$hook" ] || continue
         [ -x "$hook" ] || continue
-        "$hook"
+        if ! "$hook"; then
+          echo "Pre-reboot hook failed: $hook" >&2
+        fi
       done
 
 - name: Deploy k3s pre-reboot drain hook
@@ -56,10 +59,15 @@
     mode: '0755'
     content: |
       #!/bin/bash
-      k3s kubectl drain "$(hostname)" \
+      node_name="$(hostname)"
+      if ! k3s kubectl get node "${node_name}" >/dev/null 2>&1; then
+        echo "k3s node not found: ${node_name}" >&2
+        exit 0
+      fi
+      k3s kubectl drain "${node_name}" \
         --ignore-daemonsets \
         --delete-emptydir-data \
-        --timeout=120s
+        --timeout=120s || echo "k3s drain failed for node: ${node_name}" >&2
   when: base_unattended_add_k3s_drain_hook
 
 - name: Remove k3s pre-reboot drain hook when disabled
