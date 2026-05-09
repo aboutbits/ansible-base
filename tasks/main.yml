@@ -49,7 +49,7 @@
         [ -f "$hook" ] || continue
         [ -x "$hook" ] || continue
         if ! "$hook"; then
-          echo "Pre-reboot hook failed: $hook" >&2
+          echo "Pre-reboot hook failed: ${hook}" >&2
           hook_failed=1
         fi
       done
@@ -92,7 +92,7 @@
   ansible.builtin.file:
     path: /etc/unattended-upgrades/pre-reboot-hooks.d/10-k3s-drain
     state: absent
-  when: not base_unattended_reboot_enabled or not base_unattended_reboot_k3s_drain_hook
+  when: not (base_unattended_reboot_enabled and base_unattended_reboot_k3s_drain_hook)
 
 - name: Configure unattended-upgrades reboot behavior
   ansible.builtin.blockinfile:
