@@ -1,7 +1,7 @@
 ---
 - name: Set timezone
   community.general.timezone:
-    name: {{ base_timezone } }
+    name: "{{ base_timezone }}"
 
 - name: Restart service cron
   ansible.builtin.systemd:
@@ -18,8 +18,8 @@
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     content: |
-      APT::Periodic::Update-Package-Lists "1";
-      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::Update-Package-Lists "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
+      APT::Periodic::Unattended-Upgrade "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
     owner: root
     group: root
     mode: '0644'
@@ -31,6 +31,7 @@
     owner: root
     group: root
     mode: '0755'
+  when: base_unattended_reboot_enabled
 
 - name: Deploy unattended-upgrades pre-reboot hooks runner
   ansible.builtin.copy:
@@ -43,7 +44,6 @@
       set -uo pipefail
       shopt -s nullglob
       hook_dir="/etc/unattended-upgrades/pre-reboot-hooks.d"
-      fail_on_error="{{ base_unattended_pre_reboot_hooks_fail_on_error | bool | ternary('true', 'false') }}"
       hook_failed=0
       for hook in "${hook_dir}"/*; do
         [ -f "$hook" ] || continue
@@ -53,9 +53,16 @@
           hook_failed=1
         fi
       done
-      if [ "${hook_failed}" -ne 0 ] && [ "${fail_on_error}" = "true" ]; then
+      if [ "${hook_failed}" -ne 0 ]; then
         exit 1
       fi
+  when: base_unattended_reboot_enabled
+
+- name: Remove unattended-upgrades pre-reboot hooks runner when reboot is disabled
+  ansible.builtin.file:
+    path: /usr/local/bin/unattended-pre-reboot-hooks.sh
+    state: absent
+  when: not base_unattended_reboot_enabled
 
 - name: Deploy k3s pre-reboot drain hook
   ansible.builtin.copy:
@@ -72,20 +79,20 @@
       fi
       k3s kubectl drain "${node_name}" \
         --ignore-daemonsets \
-      {% if base_unattended_k3s_drain_delete_emptydir_data %}
         --delete-emptydir-data \
-      {% endif %}
-        --timeout={{ base_unattended_k3s_drain_timeout }} || {
+        --timeout={{ base_unattended_reboot_k3s_drain_timeout }} || {
           echo "k3s drain failed for node: ${node_name}" >&2
           exit 1
         }
-  when: base_unattended_add_k3s_drain_hook
+  when:
+    - base_unattended_reboot_enabled
+    - base_unattended_reboot_k3s_drain_hook
 
 - name: Remove k3s pre-reboot drain hook when disabled
   ansible.builtin.file:
     path: /etc/unattended-upgrades/pre-reboot-hooks.d/10-k3s-drain
     state: absent
-  when: not base_unattended_add_k3s_drain_hook
+  when: not base_unattended_reboot_enabled or not base_unattended_reboot_k3s_drain_hook
 
 - name: Configure unattended-upgrades reboot behavior
   ansible.builtin.blockinfile:
@@ -97,3 +104,11 @@
       Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
       Unattended-Upgrade::Automatic-Reboot-Time "{{ base_unattended_reboot_time }}";
       Unattended-Upgrade::Pre-Reboot-Hook "/usr/local/bin/unattended-pre-reboot-hooks.sh";
+  when: base_unattended_reboot_enabled
+
+- name: Remove unattended-upgrades reboot behavior when disabled
+  ansible.builtin.blockinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    marker: "// {mark} ANSIBLE MANAGED REBOOT SETTINGS"
+    state: absent
+  when: not base_unattended_reboot_enabled
