@@ -41,7 +41,7 @@
     mode: '0755'
     content: |
       #!/bin/bash
-      set -uo pipefail
+      set -euo pipefail
       shopt -s nullglob
       hook_dir="/etc/unattended-upgrades/pre-reboot-hooks.d"
       hook_failed=0
