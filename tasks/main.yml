@@ -18,8 +18,8 @@
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     content: |
-      APT::Periodic::Update-Package-Lists "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
-      APT::Periodic::Unattended-Upgrade "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
     owner: root
     group: root
     mode: '0644'
@@ -67,6 +67,8 @@
     mode: '0755'
     content: |
       #!/bin/bash
+      set -euo pipefail
+      shopt -s nullglob
       node_name="$(hostname)"
       if ! k3s kubectl get node "${node_name}" >/dev/null 2>&1; then
         echo "k3s node not found: ${node_name}" >&2
