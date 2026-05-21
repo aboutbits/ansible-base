@@ -18,12 +18,11 @@
   ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     content: |
-      APT::Periodic::Update-Package-Lists "1";
-      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::Update-Package-Lists "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
+      APT::Periodic::Unattended-Upgrade "{{ base_unattended_update_enabled | bool | ternary('1', '0') }}";
     owner: root
     group: root
     mode: '0644'
-  when: base_unattended_update_enabled
 
 - name: Create unattended-upgrades pre-reboot hooks directory
   ansible.builtin.file:
@@ -42,7 +41,7 @@
     mode: '0755'
     content: |
       #!/bin/bash
-      set -euo pipefail
+      set -uo pipefail
       shopt -s nullglob
       hook_dir="/etc/unattended-upgrades/pre-reboot-hooks.d"
       hook_failed=0
@@ -86,27 +85,21 @@
     - base_unattended_reboot_k3s_drain_hook
 
 - name: Configure unattended-upgrades reboot behavior
-  ansible.builtin.copy:
-    dest: /etc/apt/apt.conf.d/50unattended-upgrades
-    content: |
+  ansible.builtin.blockinfile:
+    path: /etc/apt/apt.conf.d/50unattended-upgrades
+    create: true
+    marker: "// {mark} ANSIBLE MANAGED"
+    block: |
       Unattended-Upgrade::Automatic-Reboot "true";
       Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
       Unattended-Upgrade::Automatic-Reboot-Time "{{ base_unattended_reboot_time }}";
       Unattended-Upgrade::Pre-Reboot-Hook "/usr/local/bin/unattended-pre-reboot-hooks.sh";
-    owner: root
-    group: root
-    mode: '0644'
   when: base_unattended_reboot_enabled
 
-- name: Remove unattended-upgrades behavior when disabled
-  ansible.builtin.file:
-    path: /etc/apt/apt.conf.d/20auto-upgrades
-    state: absent
-  when: not base_unattended_update_enabled
-
 - name: Remove unattended-upgrades reboot behavior when disabled
-  ansible.builtin.file:
+  ansible.builtin.blockinfile:
     path: /etc/apt/apt.conf.d/50unattended-upgrades
+    marker: "// {mark} ANSIBLE MANAGED"
     state: absent
   when: not base_unattended_reboot_enabled
 
